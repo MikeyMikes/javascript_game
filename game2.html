@@ -1,0 +1,359 @@
+<html>
+
+<canvas id="gameCanvas" width="1200" height="800">
+</canvas>
+
+<script>
+
+window.onload = function() {
+	canvas = document.getElementById('gameCanvas');
+	canvasContext = canvas.getContext('2d');
+	
+	var character = {x:100, y:75, speed:20, health:20, head_radius:50, eye_radius:10, pupil_radius:4}
+	var laser = {x:character.x-(character.head_radius/2), y:character.y, speed:30, color:'red', length:15, width:10} 
+	var enemy1 = {x:canvas.width, y:character.y, speed:15, points:10, length:40, width:30}
+	var enemy2 = {x:canvas.width, y:character.y, speed:20, points:15, length:50, width:20}
+	var enemy3 = {x:canvas.width, y:character.y, speed:30, points:20, radius:25}
+	var score = 0;
+	var level = 1;
+	var lastLevel = 1;
+	var hasMoved = 0;
+	var once = 0;
+	var random_y = 10; //initial value
+	var timeElapsed = 0;
+	var surprised = false;
+	var mySound;
+	var soundOn = true;
+	var shootInterval;
+	
+	drawCharacter();
+	//setInterval is called 30 times every second. This is how we have movement.
+	var framesPerSecond = 30;
+	var interval = setInterval(function() {
+		enemyMovement();
+		hasMoved++;
+		if(hasMoved<2){
+			characterMovement();
+		}
+		drawEverything();
+		timeElapsed++;
+	}, 1000/framesPerSecond);
+	
+	function enemyMovement(){
+		enemy1.x -= enemy1.speed;
+		enemy2.x -= enemy2.speed;
+		enemy3.x -= enemy3.speed;
+		resetEnemy();
+	}
+	
+	function drawEverything(){
+		//show score
+		canvasContext.clearRect(0,0,canvas.width,canvas.height,'black');
+		canvasContext.font = "50px Arial";
+		canvasContext.fillText("Score: " + score, (canvas.width/2)-300, canvas.height-10);
+		
+		//show level
+		level = Math.floor(score/100)+1;
+		canvasContext.fillText("Level: " + level, (canvas.width/2)+300, canvas.height-10);
+		
+		if(level > lastLevel){
+			enemy1.speed *= 1.25;
+			enemy2.speed *= 1.25;
+			enemy3.speed *= 1.25;
+		}
+		
+		drawCharacter();
+		drawEnemy();
+	}
+	
+	function drawEnemy(){
+		canvasContext.fillStyle = "magenta";
+		canvasContext.fillRect(enemy1.x, enemy1.y, enemy1.length, enemy1.width);
+		canvasContext.stroke();
+		canvasContext.fillStyle = "black";
+		
+		console.log(enemy1.x + " " + enemy1.y);
+		
+		if(enemy1.x < (laser.x+(laser.length/2))){
+			if(character.y < enemy1.y+(enemy1.length/2) && character.y > enemy1.y-(enemy1.length/2)){
+				enemy1.x = canvas.width;
+				enemy1.y = Math.floor(Math.random() * 800);
+				laser.x = character.x;
+				laser.y = character.y;
+				
+				score += enemy1.points;
+			}
+		}
+
+		if(enemy1.x < (character.x+(character.head_radius)) && enemy1.x > (character.x-(character.head_radius))){
+			if(enemy1.y < (character.y+(character.head_radius)) && enemy1.y > (character.y-(character.head_radius))){
+				surprised = true;
+				
+				gameOver();
+			}
+		}
+		
+		if(timeElapsed > 200){
+			canvasContext.beginPath();
+			canvasContext.moveTo(enemy2.x, enemy2.y);
+			canvasContext.lineTo(enemy2.x-enemy2.width, enemy2.y);
+			canvasContext.lineTo(enemy2.x-(enemy2.width/2), enemy2.y+enemy2.length);
+			canvasContext.lineTo(enemy2.x, enemy2.y);
+			canvasContext.closePath();
+			canvasContext.fillStyle = "blue";
+			canvasContext.fill();
+			canvasContext.fillStyle = "black";
+			
+			if(enemy2.x < (laser.x+(laser.length/2))){
+				if(character.y < enemy2.y+(enemy2.length) && character.y > enemy2.y-(enemy2.length/2)){
+					enemy2.x = canvas.width;
+					enemy2.y = Math.floor(Math.random() * 800);
+					laser.x = character.x;
+					laser.y = character.y;
+					
+					score += enemy2.points;
+				}
+			}
+			
+			if(enemy2.x < (character.x+(character.head_radius)) && enemy2.x > (character.x-(character.head_radius))){
+				if(enemy2.y < (character.y+(character.head_radius)) && enemy2.y > (character.y-(character.head_radius))){
+					surprised = true;
+					
+					gameOver();
+				}
+			}
+		}
+		
+		if(timeElapsed > 500){
+			makeFilledCircle(enemy3.x, enemy3.y, enemy3.radius, 2*Math.PI, 'yellow');
+			
+			if(enemy3.x < (laser.x+(laser.length/2))){
+				if(character.y < enemy3.y+(enemy3.radius) && character.y > enemy3.y-(enemy3.radius)){
+					enemy3.x = canvas.width;
+					enemy3.y = Math.floor(Math.random() * 800);
+					laser.x = character.x;
+					laser.y = character.y;
+					
+					score += enemy3.points;
+				}
+			}
+			
+			if(enemy3.x < (character.x+(character.head_radius)) && enemy3.x > (character.x-(character.head_radius))){
+				if(enemy3.y < (character.y+(character.head_radius)) && enemy3.y > (character.y-(character.head_radius))){
+					surprised = true;
+					
+					gameOver();
+				}
+			}
+		}
+		
+		lastLevel = level;
+	}
+	
+	function characterMovement(){
+		document.addEventListener('keydown', function(event) {
+			//left
+			if(event.keyCode == 65) {
+				character.x -= character.speed;
+			}
+			//right
+			else if(event.keyCode == 68) {
+				character.x += character.speed;
+			}
+			//up
+			else if(event.keyCode == 87) {
+				character.y -= character.speed;
+			}
+			//down
+			else if(event.keyCode == 83) {
+				character.y += character.speed;
+			}
+			//shoot laser
+			else if(event.keyCode == 32) {
+				var counter = 0;
+				
+				//fire laser sound
+				if(soundOn){
+					mySound = new sound("ray_gun.mp3");
+					mySound.play();
+				}
+				
+				console.log(soundOn);
+				
+				while(laser.x < canvas.width){
+					drawEnemy();
+					canvasContext.fillStyle = laser.color;
+					canvasContext.fillRect(laser.x, character.y, laser.length, laser.width);
+					canvasContext.stroke();
+					canvasContext.fillStyle = "black";
+					
+					counter++;
+					laser.x = character.x + (laser.speed*counter);
+				}
+				laser.x = character.x-(character.head_radius/2);
+			}
+			else if(event.keyCode == 77){
+				//silence laser
+				soundOn = !soundOn;
+			}
+			else if(event.keyCode == 71){
+				laser.color = 'green';
+			}
+			else if(event.keyCode == 66){
+				laser.color = 'blue';
+			}
+			else if(event.keyCode == 82){
+				laser.color = 'red';
+			}
+		});
+	}
+	
+	function resetEnemy(){
+		if(enemy1.x < .1){
+			enemy1.x = canvas.width;
+			enemy1.y = Math.floor(Math.random() * 800);
+		}
+		if(enemy2.x < .1){
+			enemy2.x = canvas.width;
+			enemy2.y = Math.floor(Math.random() * 800);
+		}
+		if(enemy3.x < .1){
+			enemy3.x = canvas.width;
+			enemy3.y = Math.floor(Math.random() * 800);
+		}
+	}
+	
+	function drawCharacter(){
+		//drawing the character head
+		makeCircle(character.x, character.y, character.head_radius, 2*Math.PI);
+		
+		//left eye
+		makeCircle(character.x-(character.head_radius/2), character.y-(character.head_radius/3), character.eye_radius, 2*Math.PI);
+		
+		//left pupil
+		makeFilledCircle(character.x-(character.head_radius/2), character.y-(character.head_radius/3), character.pupil_radius, 2*Math.PI, 'black');
+		
+		//right eye
+		makeCircle(character.x+(character.head_radius/2), character.y-(character.head_radius/3), character.eye_radius, 2*Math.PI);
+		
+		//right pupil
+		makeFilledCircle(character.x+(character.head_radius/2), character.y-(character.head_radius/3), character.pupil_radius, 2*Math.PI, 'black');
+		
+		//nose
+		canvasContext.beginPath();
+		canvasContext.moveTo(character.x, character.y);
+		canvasContext.lineTo(character.x+6, character.y+10);
+		canvasContext.lineTo(character.x, character.y+10);
+		canvasContext.stroke();
+		
+		//mouth
+		if(surprised){
+			makeFilledCircle(character.x, character.y+(character.head_radius/2), 5, 2*Math.PI, 'black');
+		}
+		else{
+			canvasContext.beginPath();
+			canvasContext.moveTo(character.x-5, character.y+(character.head_radius/2));
+			canvasContext.lineTo(character.x+5, character.y+(character.head_radius/2));
+			canvasContext.stroke();
+		}
+	}
+	
+	function gameOver(){
+		drawCharacter();
+		clearInterval(interval);
+		clearInterval(shootInterval);
+		
+		setTimeout(function() {
+			makeExplosion();
+		}, 1000);
+		
+		setTimeout(function () {
+			canvasContext.font = "30px Arial";
+			canvasContext.fillText("Game Over!",canvas.width/2,canvas.height/2);
+			
+			totalTime = timeElapsed/30;
+			var minutesSurvived = Math.floor(totalTime/60);
+			var secondsSurvived = Math.floor(totalTime%60);
+			canvasContext.font = "12px Arial";
+			if(minutesSurvived == 1){
+				canvasContext.fillText("You survived for " + minutesSurvived + " minute and " + secondsSurvived + " seconds", (canvas.width/2), (canvas.height/2)+20);
+			}
+			else{
+				canvasContext.fillText("You survived for " + minutesSurvived + " minutes and " + secondsSurvived + " seconds", (canvas.width/2), (canvas.height/2)+20);
+			}
+		}, 1001);
+	}
+	
+	function makeExplosion(){
+		canvasContext.clearRect(0,0,canvas.width,canvas.height,'black');
+		
+		for(i=0; i<101; i++){
+			quadrant1_x = character.x + Math.floor(Math.random() * 101);
+			quadrant1_y = character.y - Math.floor(Math.random() * 101);
+			
+			quadrant2_x = character.x - Math.floor(Math.random() * 101);
+			quadrant2_y = character.y - Math.floor(Math.random() * 101);
+		
+			quadrant3_x = character.x - Math.floor(Math.random() * 101);
+			quadrant3_y = character.y + Math.floor(Math.random() * 101);
+			
+			quadrant4_x = character.x + Math.floor(Math.random() * 101);
+			quadrant4_y = character.y + Math.floor(Math.random() * 101);
+			
+			//random color generator
+			var hue = (Math.floor(Math.random() * 256)).toString(16) + (Math.floor(Math.random() * 256)).toString(16) + (Math.floor(Math.random() * 256)).toString(16);
+			
+			makeLines(quadrant1_x, quadrant1_y, hue);
+			makeLines(quadrant2_x, quadrant2_y, hue);
+			makeLines(quadrant3_x, quadrant3_y, hue);
+			makeLines(quadrant4_x, quadrant4_y, hue);
+		}
+		
+		//explosion sound
+		if(soundOn){
+			mySound = new sound("explosion.mp3");
+			mySound.play();
+		}
+	}
+	
+	function sound(src) {
+		this.sound = document.createElement("audio");
+		this.sound.src = src;
+		this.sound.setAttribute("preload", "auto");
+		this.sound.setAttribute("controls", "none");
+		this.sound.style.display = "none";
+		document.body.appendChild(this.sound);
+		this.play = function(){
+			this.sound.play();
+		}
+		this.stop = function(){
+			this.sound.pause();
+		}
+}
+	
+	function makeLines(quadrant_x, quadrant_y, hue){
+		canvasContext.beginPath();
+		canvasContext.moveTo(character.x, character.y);
+		canvasContext.lineTo(quadrant_x, quadrant_y);
+		canvasContext.strokeStyle = "#" + hue;
+		canvasContext.stroke();
+	}
+	
+	function makeCircle(x, y, radius, circumference){
+		canvasContext.beginPath();
+		canvasContext.arc(x, y, radius, 0, circumference);
+		canvasContext.stroke();
+	}
+	
+	function makeFilledCircle(x, y, radius, circumference, color){
+		canvasContext.beginPath();
+		canvasContext.arc(x, y, radius, 0, circumference);
+		canvasContext.fillStyle = color;
+		canvasContext.fill();
+		canvasContext.fillStyle = "black";
+	}
+}
+
+</script>
+
+</html>
