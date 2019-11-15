@@ -9,11 +9,11 @@ window.onload = function() {
 	canvas = document.getElementById('gameCanvas');
 	canvasContext = canvas.getContext('2d');
 	
-	var character = {x:100, y:75, speed:20, health:20, head_radius:50, eye_radius:10, pupil_radius:4}
-	var laser = {x:character.x-(character.head_radius/2), y:character.y, speed:30, color:'red', length:15, width:10} 
-	var enemy1 = {x:canvas.width, y:character.y, speed:15, points:10, length:40, width:30}
-	var enemy2 = {x:canvas.width, y:character.y, speed:20, points:15, length:50, width:20}
-	var enemy3 = {x:canvas.width, y:character.y, speed:30, points:20, radius:25}
+	var character = {x:100, y:75, speed:30, health:20, head_radius:50, eye_radius:10, pupil_radius:4}
+	var laser = {x:character.x-(character.head_radius/2), y:character.y, speed:10, color:'red', length:15, width:10} 
+	var enemy1 = {x:canvas.width, y:character.y, speed:20, points:10, length:40, width:30}
+	var enemy2 = {x:canvas.width, y:character.y, speed:30, points:15, length:50, width:20}
+	var enemy3 = {x:canvas.width, y:character.y, speed:40, points:20, radius:25}
 	var score = 0;
 	var level = 1;
 	var lastLevel = 1;
@@ -27,7 +27,8 @@ window.onload = function() {
 	var shootInterval;
 	
 	drawCharacter();
-	//setInterval is called 30 times every second. This is how we have movement.
+	drawBorder();
+	
 	var framesPerSecond = 30;
 	var interval = setInterval(function() {
 		enemyMovement();
@@ -166,6 +167,22 @@ window.onload = function() {
 			}
 			//down
 			else if(event.keyCode == 83) {
+				character.y += character.speed;
+			}
+			//left
+			else if(event.keyCode == 37) {
+				character.x -= character.speed;
+			}
+			//right
+			else if(event.keyCode == 39) {
+				character.x += character.speed;
+			}
+			//up
+			else if(event.keyCode == 38) {
+				character.y -= character.speed;
+			}
+			//down
+			else if(event.keyCode == 40) {
 				character.y += character.speed;
 			}
 			//shoot laser
@@ -351,6 +368,13 @@ window.onload = function() {
 		canvasContext.fillStyle = color;
 		canvasContext.fill();
 		canvasContext.fillStyle = "black";
+	}
+	
+	function drawBorder(){
+		canvasContext.beginPath();
+		canvasContext.moveTo(0, 0);
+		canvasContext.lineTo(0, canvasContext.width);
+		
 	}
 }
 
